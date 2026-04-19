@@ -1,7 +1,7 @@
 import json
 import logging
 import inspect
-
+import os
 from typing import Any
 
 from a2a.server.agent_execution import AgentExecutor
@@ -41,6 +41,18 @@ class OpenAIAgentExecutor(AgentExecutor):
         )
         self.model = model
         self.system_prompt = system_prompt
+        self.use_gateway = bool(os.getenv("LLM_GATEWAY_URL") and os.getenv("LLM_VIRTUAL_KEY"))
+
+    def _build_gateway_headers(self) -> dict[str, str]:
+        headers = {"x-nasiko-agent": self._card.name}
+        try:
+            from opentelemetry.propagate import inject
+
+            inject(headers)
+        except Exception:
+            # Keep requests functional even if OTel isn't available in a given runtime.
+            pass
+        return headers
 
     async def _process_request(
         self,
